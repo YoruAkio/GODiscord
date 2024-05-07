@@ -86,9 +86,12 @@ func main() {
 	// Calculate the startup time
 	startupTime := time.Since(startTime).Round(time.Millisecond)
 
-	logInfo("Bot is now running. Startup time: " + startupTime.String())
-	logInfo("Press CTRL-C to exit.")
-
+	// Add a handler for ready event
+	discord.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		logInfo("Bot is now running. Startup time: " + startupTime.String())
+		logInfo("Press CTRL-C to exit.")
+	})
+	
 	// Wait here until CTRL-C or other term signal is received
 	sc := make(chan os.Signal, 1)
 	<-sc
