@@ -41,24 +41,6 @@ func main() {
 	}
 
 	// Define the list of commands
-	// commands := []*Command{
-	// 	{
-	// 		Name:        "ping",
-	// 		Description: "Replies with 'Pong!' and shows response time and client WebSocket ping.",
-	// 		Handler:     pingCommand,
-	// 	},
-	// 	{
-	// 		Name:        "echo",
-	// 		Description: "Repeats back the message sent after the command.",
-	// 		Handler:     echoCommand,
-	// 	},
-	// 	{
-	// 		Name:        "help",
-	// 		Description: "Shows the list of available commands.",
-	// 		Handler:     func(s *discordgo.Session, m *discordgo.MessageCreate) { helpCommand(s, m, commands) },
-	// 	},
-	// }
-
 	commands := make([]*Command, 3)
 
 	commands[0] = &Command{
