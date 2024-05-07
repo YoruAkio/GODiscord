@@ -64,12 +64,24 @@ func main() {
 	// Register message handler function
 	discord.AddHandler(messageHandler(commands))
 
+	defer discord.Close()
+
+	// Set the bot's presence
+	discord.UpdateStatusComplex(discordgo.UpdateStatusData{
+		Activities: []*discordgo.Activity{
+			{
+				Name: "chilling with Gopher",
+				Type: discordgo.ActivityTypeGame,
+			},
+		},
+		Status: "online",
+	})
+
 	// Open a websocket connection to Discord
 	if err = discord.Open(); err != nil {
 		logError("Error opening connection:", err)
 		return
 	}
-	defer discord.Close()
 
 	// Calculate the startup time
 	startupTime := time.Since(startTime).Round(time.Millisecond)
