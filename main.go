@@ -77,21 +77,64 @@ func main() {
 		Status: "online",
 	})
 
+	// Calculate the startup time
+	startupTime := time.Since(startTime).Round(time.Millisecond)
+
+	// Add a handler for ready event
+	// Add a handler for the ready event
+	discord.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		logInfo("Bot is now running. Startup time: " + startupTime.String())
+		logInfo("Press CTRL-C to exit.")
+
+		// Create the 'ping' slash command
+		_, err = discord.ApplicationCommandCreate(discord.State.User.ID, "", &discordgo.ApplicationCommand{
+			Name:        "ping",
+			Description: "Replies with 'Pong!' and shows response time and client WebSocket ping.",
+		})
+		if err != nil {
+			logError("Error creating 'ping' slash command:", err)
+			return
+		}
+
+		// Create the 'echo' slash command
+		_, err = discord.ApplicationCommandCreate(discord.State.User.ID, "", &discordgo.ApplicationCommand{
+			Name:        "echo",
+			Description: "Repeats back the message sent after the command.",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "message",
+					Description: "The message to echo",
+					Required:    true,
+				},
+			},
+		})
+		if err != nil {
+			logError("Error creating 'echo' slash command:", err)
+			return
+		}
+	})
+
+	// Add a handler for interactions
+	discord.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		// Check if the interaction is a command
+		if i.Type == discordgo.InteractionApplicationCommand {
+			// Handle the command
+			switch i.Data.(*discordgo.ApplicationCommandInteractionData).Name {
+			case "ping":
+				pingCommandInteraction(s, i)
+			case "echo":
+				echoCommandInteraction(s, i)
+			}
+		}
+	})
+
 	// Open a websocket connection to Discord
 	if err = discord.Open(); err != nil {
 		logError("Error opening connection:", err)
 		return
 	}
 
-	// Calculate the startup time
-	startupTime := time.Since(startTime).Round(time.Millisecond)
-
-	// Add a handler for ready event
-	discord.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		logInfo("Bot is now running. Startup time: " + startupTime.String())
-		logInfo("Press CTRL-C to exit.")
-	})
-	
 	// Wait here until CTRL-C or other term signal is received
 	sc := make(chan os.Signal, 1)
 	<-sc
@@ -175,4 +218,41 @@ func helpCommand(s *discordgo.Session, m *discordgo.MessageCreate, commands []*C
 		helpMessage.WriteString(fmt.Sprintf("- !%s: %s\n", cmd.Name, cmd.Description))
 	}
 	s.ChannelMessageSend(m.ChannelID, helpMessage.String())
+}
+
+func pingCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	start := time.Now()
+	wsLatency := s.HeartbeatLatency().Round(time.Millisecond)
+	content := fmt.Sprintf("Pong! WebSocket Ping: %s", wsLatency)
+	elapsed := time.Since(start)
+	content += fmt.Sprintf(" | Response Time: %s", elapsed)
+
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: content,
+		},
+	})
+}
+
+func echoCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// Get the 'message' option
+	messageOption := i.ApplicationCommandData().Options[0]
+	if messageOption == nil || messageOption.Value == nil {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Please provide something to echo!",
+			},
+		})
+		return
+	}
+
+	// Echo the message
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: messageOption.Value.(string),
+		},
+	})
 }
